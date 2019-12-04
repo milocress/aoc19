@@ -2,14 +2,14 @@ module Main where
 
 import Control.Monad.State (State, modify, gets, evalState)
 import Control.Monad (guard)
-import Data.List (elemIndex, sortOn)
+import Data.List (elemIndex, sortOn, group)
 import Data.List.Split (splitOn)
 import Data.Set (Set, fromList, findMin, intersection, member)
 import qualified Data.Set as S (map)
 import Data.Maybe (fromJust)
 
 main :: IO ()
-main = day3
+main = day4
 
 day1 :: IO ()
 day1 = do
@@ -130,7 +130,7 @@ day3 = do
       positions = foldl1 intersection $ trace <$> paths
       distances = S.map manhattan positions
       allPositions = zip [1..] . traceSteps <$> paths
-      wantedPositions = map fst <$> sortOn snd <$> filter (\pos -> snd pos `member` positions) <$> allPositions
+      wantedPositions = map fst . sortOn snd . filter (\pos -> snd pos `member` positions) <$> allPositions
       bestSteps = minimum $ zipWith (+) (head wantedPositions) (wantedPositions !! 1)
   print $ findMin distances
   print (bestSteps :: Int)
@@ -173,3 +173,39 @@ parseInstruction [] = error "Big bad things"
 
 parsePath :: String -> Path
 parsePath = map parseInstruction . splitOn ","
+
+
+day4 :: IO ()
+day4 = do
+  print . length . passwords False $ parseRanges "240920" "789857"
+  print . length . passwords True $ parseRanges "240920" "789857"
+
+type Range = (Int, Int)
+getRange :: Int -> [Int]
+getRange l = [l..9]
+
+defaultRange :: Range
+defaultRange = (0, 9)
+
+type Password = Int
+
+passwords :: Bool -> Range -> [Password]
+passwords strict (hi, lo) = do
+  a <- getRange 1
+  b <- getRange a
+  c <- getRange b
+  d <- getRange c
+  e <- getRange d
+  f <- getRange e
+  let password = a * 100000 + b * 10000 + c * 1000 + d * 100 + e * 10 + f
+  guard . between hi lo $ password
+  guard . twoAdjacent $ password
+  return password
+  where
+    between a b x = x >= a && x <= b
+    twoAdjacent = if strict
+      then any (\a -> length a == 2) . group . show
+      else (6 >) . length . group . show
+
+parseRanges :: String -> String -> Range
+parseRanges a b = (read a, read b)
