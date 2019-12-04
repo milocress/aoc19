@@ -2,11 +2,14 @@ module Main where
 
 import Control.Monad.State (State, modify, gets, evalState)
 import Control.Monad (guard)
-import Data.List (splitAt)
+import Data.List (elemIndex, sortOn)
 import Data.List.Split (splitOn)
+import Data.Set (Set, fromList, findMin, intersection, member)
+import qualified Data.Set as S (map)
+import Data.Maybe (fromJust)
 
 main :: IO ()
-main = day2
+main = day3
 
 day1 :: IO ()
 day1 = do
@@ -119,3 +122,54 @@ findCorrectPrep program = do
   prep <- preparations
   guard $ evalState (prep >> runProgram >> getPositionZero) (0, program) == 19690720
   return $ evalState prep (0, program)
+
+day3 :: IO ()
+day3 = do
+  pathStrings <- lines <$> readFile "res/day3.txt"
+  let paths = parsePath <$> pathStrings
+      positions = foldl1 intersection $ trace <$> paths
+      distances = S.map manhattan positions
+      allPositions = (zip [1..] . traceSteps) <$> paths
+      wantedPositions = map fst <$> sortOn snd <$> filter (\pos -> snd pos `member` positions) <$> allPositions
+      bestSteps = minimum $ map (uncurry (+)) $ zip (wantedPositions !! 0) (wantedPositions !! 1)
+  print $ findMin distances
+  print $ bestSteps
+
+rankPosition :: Position -> [Position] -> Int
+rankPosition p = succ . fromJust . elemIndex p
+
+data Direction = U | R deriving Show
+data Instruction = I Direction Int deriving Show
+type Position = (Int, Int)
+
+manhattan :: Position -> Int
+manhattan (a, b) = abs a + abs b
+
+move :: Position -> Instruction -> ([Position], Position)
+move (x, y) (I d n) = case d of
+  U -> ((\dy -> (x, y + dy)) <$> ns, (x, y + n))
+  R -> ((\dx -> (x + dx, y)) <$> ns, (x + n, y))
+  where ns = tail $ (signum n *) <$> [0 .. abs n]
+
+type Path = [Instruction]
+
+addFst :: Semigroup a => a -> (a, b) -> (a, b)
+addFst ps (a, b) = (ps <> a, b)
+
+trace :: Path -> Set Position
+trace = fromList . traceSteps
+
+traceSteps :: Path -> [Position]
+traceSteps = fst . foldl (\(ps, p) -> addFst ps . move p) (mempty, (0,0))
+
+parseInstruction :: String -> Instruction
+parseInstruction (i:ns) = case i of
+  'U' -> I U .          read $ ns
+  'D' -> I U . negate . read $ ns
+  'L' -> I R . negate . read $ ns
+  'R' -> I R .          read $ ns
+  _ -> error "Ya done goofed"
+parseInstruction [] = error "Big bad things"
+
+parsePath :: String -> Path
+parsePath = map parseInstruction . splitOn ","
