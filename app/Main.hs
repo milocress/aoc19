@@ -129,11 +129,11 @@ day3 = do
   let paths = parsePath <$> pathStrings
       positions = foldl1 intersection $ trace <$> paths
       distances = S.map manhattan positions
-      allPositions = (zip [1..] . traceSteps) <$> paths
+      allPositions = zip [1..] . traceSteps <$> paths
       wantedPositions = map fst <$> sortOn snd <$> filter (\pos -> snd pos `member` positions) <$> allPositions
-      bestSteps = minimum $ map (uncurry (+)) $ zip (wantedPositions !! 0) (wantedPositions !! 1)
+      bestSteps = minimum $ zipWith (+) (head wantedPositions) (wantedPositions !! 1)
   print $ findMin distances
-  print $ bestSteps
+  print (bestSteps :: Int)
 
 rankPosition :: Position -> [Position] -> Int
 rankPosition p = succ . fromJust . elemIndex p
